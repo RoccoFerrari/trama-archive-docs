@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trama Archive | Technical Documentation</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <span class="icon">⏣</span>
+        <span class="title">Trama Archive</span>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="#overview" class="nav-link active">Scope & Roadmap</a>
+        <a href="#architecture" class="nav-link">System Architecture</a>
+        <a href="#frontend" class="nav-link">Frontend & UX</a>
+        <a href="#backend" class="nav-link">Backend Core</a>
+        <a href="#database" class="nav-link">Database & Storage</a>
+        <a href="#integrations" class="nav-link">AI & Market Engine</a>
+      </nav>
+    </aside>
+
+    <div class="sidebar-overlay" id="overlay"></div>
+
+    <main class="main-content">
+      <header class="topbar">
+        <button class="menu-toggle" id="menuToggle" aria-label="Open Menu">☰</button>
+        <span class="badge">Version 1.0 • August 2026</span>
+      </header>
+
+      <div class="content-wrapper">
+        <section id="overview" class="section">
+          <h1>Trama Archive Documentation</h1>
+          <p class="lead">
+            An encyclopedic project and collaborative historical archive built on a strict API-First methodology, designed to decouple presentation from business logic for maximum scalability.
+          </p>
+          
+          <h2>Business Scope & Roadmap</h2>
+          <p>
+            The platform is explicitly designed as a collaborative archive, not a native e-commerce store. It does not handle direct financial transactions, shopping carts, or shipping logistics.
+          </p>
+          <ul>
+            <li><strong>Phase 1 (Core - Active):</strong> Functions exclusively as an historical archive. The primary goal is to populate the relational database with high-quality data and build community loyalty through User Generated Content (UGC) and stringent moderation.</li>
+            <li><strong>Phase 2 (Monetization - Planned):</strong> Unlocks the commercial infrastructure via a Seller Dashboard. Subscribed sellers can sponsor their inventory and link available archival garments to their external stores, acting entirely as a lead generation bridge.</li>
+          </ul>
+        </section>
+
+        <section id="architecture" class="section">
+          <h2>System Architecture & Network</h2>
+          <p>
+            Currently hosted on an optimized Homelab environment to minimize initial operational costs, the infrastructure is fully containerized and heavily segmented to ensure security, with a clear roadmap for cloud migration.
+          </p>
+          
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Component</th>
+                  <th>Technology</th>
+                  <th>Architectural Role & Details</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Edge Router</td>
+                  <td>Traefik v3</td>
+                  <td>Intercepts traffic on ports 80/443, forces HTTPS redirection, and dynamically routes traffic using Docker Labels while managing automated ACME TLS certificates via Let's Encrypt.</td>
+                </tr>
+                <tr>
+                  <td>DNS Management</td>
+                  <td>Cloudflare</td>
+                  <td>Operates in "DNS Only" (proxy disabled) to prevent TLS conflicts. A containerized DDNS worker synchronizes the dynamic public IP every 5 minutes.</td>
+                </tr>
+                <tr>
+                  <td>Public Network</td>
+                  <td><code>web_public</code></td>
+                  <td>Exposes the Next.js frontend and the single GraphQL API endpoint to the outside world via Traefik.</td>
+                </tr>
+                <tr>
+                  <td>Private Network</td>
+                  <td><code>trama_internal</code></td>
+                  <td>Completely isolates PostgreSQL and Redis containers. They expose no ports to the host and only accept incoming traffic directly from the Go backend.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="callout">
+            <strong>Future Cloud Migration (Zero-Rewrite):</strong> Once traffic scales, the platform will migrate to a professional cloud VPS. This transition will re-enable Elasticsearch (currently bypassed for PostgreSQL native full-text search to save RAM) by simply flipping an environment variable, thanks to the Hexagonal Architecture pattern.
+          </div>
+        </section>
+
+        <section id="frontend" class="section">
+          <h2>Frontend: Presentation & UX</h2>
+          <p>
+            The web client strictly separates Server State from Client State, utilizing Feature-Sliced Design to maximize perceived performance and SEO optimization.
+          </p>
+          <ul>
+            <li><strong>Framework:</strong> Built with Next.js (App Router) and TypeScript. It utilizes Server-Side Rendering (SSR) and Static Site Generation (SSG) for SEO-critical pages (like the Item Detail Page), applying Client-Side Hydration for dynamic user states.</li>
+            <li><strong>Styling:</strong> Tailwind CSS is used with a utility-first approach to minimize production bundle sizes.</li>
+            <li><strong>State Management:</strong> Zustand replaces Redux, utilizing the Slice Pattern (e.g., <code>AuthSlice</code>, <code>ToastSlice</code>) to manage ephemeral UI state without unnecessary component re-renders.</li>
+            <li><strong>GraphQL Client:</strong> Network communications route through a central client that automatically injects JWT session tokens and acts as a global interceptor to gracefully downgrade users to Guests upon token expiration.</li>
+            <li><strong>Perceived UX:</strong> Heavy reliance on Optimistic UI for micro-actions (e.g., favoriting items immediately updates the UI while syncing in the background) and Skeleton Screens to eliminate Cumulative Layout Shift (CLS).</li>
+          </ul>
+
+          <div class="diagram-container">
+            <img 
+              src="assets/frontend_class_diagram.svg" 
+              alt="Frontend UML Class Diagram - Component Hierarchy and State Store" 
+              class="architecture-diagram"
+              loading="lazy"
+            />
+            <p class="diagram-caption">Figure 1: Frontend UML Class Diagram mapping Layout, Route Pages, and Zustand Store Slices.</p>
+          </div>
+
+        </section>
+
+        <section id="backend" class="section">
+          <h2>Backend: Core Logic & Clean Architecture</h2>
+          <p>
+            The application server is a Modular Monolith developed in Go (Golang 1.26), chosen for its low memory footprint and native concurrency handling.
+          </p>
+          <ul>
+            <li><strong>Hexagonal Pattern (Ports & Adapters):</strong> The codebase separates Primary Adapters (the GraphQL HTTP handler), the Core Domain (business logic and use cases), and Secondary Adapters (infrastructure logic like Postgres and Redis drivers). The domain remains completely agnostic to external tools.</li>
+            <li><strong>CQRS Implementation:</strong> Command Query Responsibility Segregation is applied to separate data reads (often cached in RAM) from complex, transactional writes.</li>
+            <li><strong>Worker Pool Pattern:</strong> Limits the uncontrolled creation of goroutines, maintaining a fixed number of workers to process background tasks (like sending emails) and preventing CPU/RAM exhaustion during traffic spikes.</li>
+            <li><strong>Outbox Pattern:</strong> Ensures eventual consistency between the primary database and search indexing. Approved catalog items are written to an <code>outbox_events</code> table, which a background worker polls every 5 seconds to sync with the search engine securely.</li>
+          </ul>
+
+          <div class="diagram-container">
+            <img 
+              src="assets/backend_class_diagram.svg" 
+              alt="Backend UML Class Diagram - Hexagonal Architecture and Domain Interfaces" 
+              class="architecture-diagram"
+              loading="lazy"
+            />
+            <p class="diagram-caption">Figure 2: Backend Hexagonal Architecture mapping Handlers, Core Services, Ports, and Infrastructure Adapters.</p>
+          </div>
+
+        </section>
+
+        <section id="database" class="section">
+          <h2>Database & Storage</h2>
+          <p>
+            Data persistence and caching rely on highly specialized, isolated layers to handle structured data, high-frequency reads, and media assets.
+          </p>
+          <ul>
+            <li><strong>PostgreSQL 15:</strong> The primary relational database and Single Source of Truth. It enforces ACID compliance and handles complex taxonomy joins and user access control.</li>
+            <li><strong>Redis (Caching & Time Decay):</strong> Acts as an in-memory datastore to offload heavy GraphQL queries. It also powers the real-time "Trending Items" feature using Sorted Sets. A background Lua script runs daily to apply a Time Decay factor (multiplying scores by 0.85), ensuring only currently popular items remain visible.</li>
+            <li><strong>Cloudflare R2 (S3-Compatible):</strong> Stores all multimedia assets with zero egress costs. The backend generates temporary Presigned URLs (valid for 5 minutes), allowing the frontend to upload WebP-converted images directly to the cloud, entirely bypassing the backend bandwidth. Orphaned media is purged via asynchronous logical delete commands.</li>
+          </ul>
+        </section>
+
+        <section id="integrations" class="section">
+          <h2>AI & Market Engine Integrations</h2>
+          <p>
+            The platform reduces user friction and enriches catalog data through asynchronous third-party API integrations.
+          </p>
+          <ul>
+            <li><strong>Google Gemini 3.6 Flash (AI Archivist):</strong> During the 4-step UGC Contribution Wizard, the frontend converts uploaded images to Base64. The Go backend injects these into a predefined "Fashion Archivist" prompt, forcing the multimodal AI to return a strict JSON payload that pre-fills the item's metadata (Name, Category, Gender, Season).</li>
+            <li><strong>eBay Browse API (Lazy Market Engine):</strong> To prevent UI blocking and conserve API quotas, market value estimation uses Lazy Evaluation. If an item's price history is missing or older than 7 days, a background goroutine queries the eBay API using the brand, name, and season, averages the top 10 results, and silently stores the calculated market value in PostgreSQL for future visitors.</li>
+          </ul>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script src="js/script.js"></script>
+</body>
+</html>
