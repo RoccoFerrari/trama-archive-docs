@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   navLinks.forEach(link => {
     link.addEventListener('click', () => {
-      if (window.innerWidth <= 850) toggleSidebar();
+      if (window.innerWidth <= 900) toggleSidebar();
     });
   });
 
